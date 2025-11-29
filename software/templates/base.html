@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- The title will be set by each page -->
+    <title>{% block title %}Guardian Angel{% endblock %}</title>
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/leaflet.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- ===== Left Vertical Sidebar ===== -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i class="fa-solid fa-shield-heart"></i>
+                <h1>Guardian Angel</h1>
+            </div>
+            <nav class="sidebar-nav">
+                <!-- Logic to highlight the active page -->
+                {% set active_page = request.endpoint %}
+                <ul>
+                    <li class="{{ 'active' if active_page == 'home' else '' }}">
+                        <a href="/"><i class="fa-solid fa-table-columns"></i><span>Dashboard</span></a>
+                    </li>
+                    <li class="{{ 'active' if active_page == 'location' else '' }}">
+                        <a href="/location"><i class="fa-solid fa-map-location-dot"></i><span>Location</span></a>
+                    </li>
+                    <li class="{{ 'active' if active_page == 'health' else '' }}">
+                        <a href="/health"><i class="fa-solid fa-heart-pulse"></i><span>Health</span></a>
+                    </li>
+                    <li class="{{ 'active' if active_page == 'assistant' else '' }}">
+                        <a href="/assistant"><i class="fa-solid fa-robot"></i><span>Assistant</span></a>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <a href="#"><i class="fa-solid fa-gear"></i><span>Settings</span></a>
+            </div>
+        </aside>
+
+        <!-- ===== Main Content Area (this will be filled by other pages) ===== -->
+        <main class="main-content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- ===== Floating SOS Button ===== -->
+    <button id="sos-button" class="floating-sos-button" aria-label="Emergency SOS">
+        SOS
+    </button>
+
+    <!-- ===== Scripts (Leaflet will be loaded first, then page-specific scripts) ===== -->
+    <script src="{{ url_for('static', filename='js/leaflet.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

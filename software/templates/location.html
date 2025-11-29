@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Location - Guardian (with Directions Sidebar)</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <style>
+    html, body { height: 100%; margin: 0; font-family: Arial, sans-serif; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px;
+      background: #f8f8f8;
+      border-bottom: 1px solid #ddd;
+      z-index: 1200;
+    }
+    .topbar h2 { margin: 0; font-size: 16px; }
+    .controls { display:flex; gap:8px; align-items:center; flex:1; }
+    .controls input[type="text"] { flex:1; padding:8px; font-size:14px; border:1px solid #ccc; border-radius:4px; }
+    .controls button { padding:8px 12px; font-size:14px; border-radius:4px; cursor:pointer; }
+
+    /* Layout */
+    .page {
+      display: flex;
+      height: calc(100vh - 48px); /* leave topbar height */
+    }
+    /* Sidebar on left */
+    .sidebar {
+      width: 340px;
+      min-width: 240px;
+      max-width: 420px;
+      background: #fff;
+      border-right: 1px solid #ddd;
+      overflow: auto;
+      box-shadow: 1px 0 4px rgba(0,0,0,0.06);
+      z-index: 1100;
+    }
+    .sidebar.hidden { display: none; }
+    .sidebar .header {
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      background: #fafafa;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+    .sidebar .header h3 { margin:0; font-size:16px; }
+    .sidebar .steps { padding: 8px; }
+    .step {
+      padding: 10px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      background: #fff;
+      border: 1px solid #f0f0f0;
+      cursor: pointer;
+    }
+    .step:hover { background: #f7fffb; border-color: #cdeedd; }
+    .step .index { font-weight:700; margin-right:8px; color:#2a8; }
+    .step .text { display:block; color:#222; }
+    .step .sub { color:#666; font-size:13px; margin-top:4px; }
+
+    /* Map takes remaining space */
+    #map { flex: 1 1 auto; height: 100%; }
+
+    /* Small screen: hide sidebar by default */
+    @media (max-width: 900px) {
+      .sidebar { display:none; position: absolute; z-index: 1300; width: 80%; height: 70%; top: 48px; left: 10px; border-radius:8px; }
+      .sidebar.hidden { display:none; }
+      .page { position: relative; }
+    }
+
+    /* status */
+    #route-status { margin-left: 12px; font-size:13px; color:#333; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <h2>Your Location</h2>
+
+    <form id="route-form" class="controls" onsubmit="return false;">
+      <input id="route-dest" type="text" placeholder="Enter destination (e.g. City General Hospital)" />
+      <button id="calc-route" type="button">Calculate Route</button>
+      <button id="center-default" type="button">Center Cambridge</button>
+      <button id="toggle-sidebar" type="button" title="Toggle directions" style="padding:8px 10px;">☰</button>
+    </form>
+
+    <div id="route-status" aria-live="polite"></div>
+  </div>
+
+  <div class="page">
+    <!-- Sidebar (directions) -->
+    <aside id="directions-sidebar" class="sidebar">
+      <div class="header">
+        <h3>Directions</h3>
+        <div style="flex:1"></div>
+        <button id="close-sidebar" title="Close" style="padding:6px 8px;">✕</button>
+      </div>
+      <div style="padding:8px;">
+        <div style="font-size:13px; color:#444; margin-bottom:6px;">Start: <strong>Cambridge Institute of Technology</strong></div>
+        <div id="directions-summary" style="font-size:13px;color:#555;margin-bottom:8px;"></div>
+      </div>
+      <div id="steps-container" class="steps" role="list"></div>
+    </aside>
+
+    <!-- Map -->
+    <div id="map" role="application" aria-label="Map showing Cambridge Institute and routes"></div>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+  (function () {
+    // ====== CONFIG ======
+    const DEFAULT_LAT = 13.016469;
+    const DEFAULT_LON = 77.678250;
+    const DEFAULT_ZOOM = 15;
+
+    // Init map
+    const map = L.map('map').setView([DEFAULT_LAT, DEFAULT_LON], DEFAULT_ZOOM);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Default marker
+    const defaultMarker = L.marker([DEFAULT_LAT, DEFAULT_LON]).addTo(map)
+      .bindPopup("Cambridge Institute of Technology").openPopup();
+
+    // Globals
+    window.currentRoute = null;
+    let destMarker = null;
+
+    // Sidebar elements
+    const sidebar = document.getElementById('directions-sidebar');
+    const stepsContainer = document.getElementById('steps-container');
+    const summaryEl = document.getElementById('directions-summary');
+    const statusEl = document.getElementById('route-status');
+
+    // Toggle sidebar
+    document.getElementById('toggle-sidebar').addEventListener('click', () => {
+      if (sidebar.classList.contains('hidden')) sidebar.classList.remove('hidden');
+      else sidebar.classList.remove('hidden') ? sidebar.classList.add('hidden') : sidebar.classList.remove('hidden'); // safe toggle
+      // simple: if hidden -> show; if visible -> hide. Using class presence detection:
+      if (sidebar.style.display === 'none' || window.getComputedStyle(sidebar).display === 'none') {
+        sidebar.style.display = 'block';
+      } else {
+        sidebar.style.display = 'block'; // default on wider screens - ensure visible
+        // On small screens toggle closable
+        if (window.innerWidth <= 900) {
+          sidebar.style.display = (sidebar.style.display === 'block') ? 'none' : 'block';
+        }
+      }
+    });
+
+    // Close button
+    document.getElementById('close-sidebar').addEventListener('click', () => {
+      sidebar.style.display = 'none';
+    });
+
+    // drawRoute: accepts GeoJSON geometry and steps (array)
+    function drawRoute(geometry, steps) {
+      try {
+        if (window.currentRoute) {
+          map.removeLayer(window.currentRoute);
+          window.currentRoute = null;
+        }
+        window.currentRoute = L.geoJSON(geometry, {
+          style: () => ({ color: '#2a8', weight: 5, opacity: 0.9 })
+        }).addTo(map);
+
+        // Fit bounds
+        try {
+          const bounds = window.currentRoute.getBounds();
+          if (bounds && typeof bounds.isValid === 'function' ? bounds.isValid() : true) {
+            map.fitBounds(bounds, { padding: [40,40] });
+          }
+        } catch (e) { console.warn("fitBounds error", e); }
+
+        // Populate steps into sidebar
+        populateSteps(steps);
+
+      } catch (err) {
+        console.error("drawRoute error:", err);
+      }
+    }
+
+    // Populate steps list
+    function populateSteps(steps) {
+      stepsContainer.innerHTML = '';
+      if (!Array.isArray(steps) || steps.length === 0) {
+        summaryEl.textContent = 'No turn-by-turn steps available.';
+        return;
+      }
+      summaryEl.textContent = `${steps.length} step(s)`;
+      // show sidebar
+      sidebar.style.display = 'block';
+
+      steps.forEach((s, idx) => {
+        const div = document.createElement('div');
+        div.className = 'step';
+        div.setAttribute('role','listitem');
+        // step index + text
+        const idxSpan = document.createElement('span');
+        idxSpan.className = 'index';
+        idxSpan.textContent = (idx+1) + '.';
+        const textSpan = document.createElement('span');
+        textSpan.className = 'text';
+        textSpan.textContent = s.text || (s.instruction || 'Proceed');
+
+        const sub = document.createElement('div');
+        sub.className = 'sub';
+        // attempt to show step location if available
+        if (s.location && Array.isArray(s.location)) {
+          const loc = s.location;
+          // try to detect [lon,lat] and convert
+          let lat = null, lon = null;
+          if (Math.abs(loc[0]) > 90) { lon = loc[0]; lat = loc[1]; }
+          else { lat = loc[0]; lon = loc[1]; }
+          sub.textContent = `Location: ${lat ? lat.toFixed(6) : '-'}, ${lon ? lon.toFixed(6) : '-'}`;
+        } else {
+          sub.textContent = '';
+        }
+
+        div.appendChild(idxSpan);
+        div.appendChild(textSpan);
+        if (sub.textContent) div.appendChild(sub);
+
+        // on click: center map to step location (if available)
+        div.addEventListener('click', () => {
+          if (s.location && Array.isArray(s.location)) {
+            const loc = s.location;
+            let lat = null, lon = null;
+            if (Math.abs(loc[0]) > 90) { lon = loc[0]; lat = loc[1]; }
+            else { lat = loc[0]; lon = loc[1]; }
+            if (lat !== null && lon !== null) {
+              map.panTo([lat, lon]);
+              L.popup().setLatLng([lat, lon]).setContent(s.text || 'Step').openOn(map);
+            }
+          }
+        });
+
+        stepsContainer.appendChild(div);
+      });
+    }
+
+    // UI helpers
+    function setStatus(text, isError) {
+      statusEl.textContent = text || '';
+      statusEl.style.color = isError ? '#b30000' : '#333';
+    }
+
+    // Wiring: calculate route button & input
+    const calcBtn = document.getElementById('calc-route');
+    const centerBtn = document.getElementById('center-default');
+    const destInput = document.getElementById('route-dest');
+
+    calcBtn.addEventListener('click', async () => {
+      const dest = destInput.value.trim();
+      if (!dest) { setStatus('Please enter a destination.', true); return; }
+      setStatus('Calculating route…');
+
+      const payload = { from: { lat: DEFAULT_LAT, lon: DEFAULT_LON }, to: dest };
+
+      try {
+        const resp = await fetch('/api/get_route', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        let data = null;
+        try { data = await resp.json(); } catch(e){ data=null; }
+
+        if (!resp.ok) {
+          const msg = data && data.error ? data.error : `Routing failed (${resp.status})`;
+          setStatus(msg, true);
+          return;
+        }
+
+        if (!data || !data.geometry) {
+          setStatus('Routing service returned no geometry.', true);
+          return;
+        }
+
+        setStatus('Route calculated — showing directions.');
+        // draw route and populate sidebar
+        drawRoute(data.geometry, data.steps || []);
+
+        // place destination marker (try to parse last point)
+        let destLat=null, destLon=null;
+        if (Array.isArray(data.steps) && data.steps.length) {
+          const last = data.steps[data.steps.length-1];
+          if (Array.isArray(last.location) && last.location.length>=2) {
+            const loc = last.location;
+            if (Math.abs(loc[0]) > 90) { destLon=loc[0]; destLat=loc[1]; }
+            else { destLat=loc[0]; destLon=loc[1]; }
+          }
+        }
+        if (destLat===null && data.geometry && Array.isArray(data.geometry.coordinates)) {
+          const coords = data.geometry.coordinates;
+          const last = coords[coords.length-1];
+          if (Array.isArray(last) && last.length>=2) { destLon = last[0]; destLat = last[1]; }
+        }
+        if (destLat!==null) {
+          if (destMarker) map.removeLayer(destMarker);
+          destMarker = L.marker([destLat, destLon]).addTo(map).bindPopup(dest).openPopup();
+        }
+
+      } catch (err) {
+        console.error("Route fetch error:", err);
+        setStatus('Network error while contacting routing service.', true);
+      }
+    });
+
+    // Enter key handling
+    destInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); calcBtn.click(); } });
+
+    // Center Cambridge
+    centerBtn.addEventListener('click', () => { map.setView([DEFAULT_LAT, DEFAULT_LON], DEFAULT_ZOOM); setStatus(''); });
+
+    // Initialize: make sidebar visible on wide screens, hidden on narrow
+    if (window.innerWidth <= 900) sidebar.style.display = 'none';
+    else sidebar.style.display = 'block';
+
+    console.log("Location page ready (with sidebar).");
+  })();
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Guardian Angel{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>Welcome, User!</h1>
+    <p>Your smart walker's status at a glance.</p>
+</div>
+
+<div class="dashboard-grid-container">
+    <div class="dashboard-main-content">
+        <div id="map"></div>
+        <button id="recenter-button" class="map-button">
+            <i class="fa-solid fa-location-crosshairs"></i> Recenter
+        </button>
+    </div>
+
+    <div class="dashboard-sidebar">
+        <div id="status-card" class="card status-card">
+            <h3 id="status-text">Checking Status...</h3>
+            <p id="status-subtext">All systems are being monitored.</p>
+        </div>
+        <div class="card">
+            <h3>Connectivity</h3>
+            <p><i class="fa-brands fa-bluetooth-b"></i> Bluetooth: <span id="bluetooth-status">--</span></p>
+            <p><i class="fa-solid fa-wifi"></i> Wi-Fi: <span id="wifi-status">--</span></p>
+            <p><i class="fa-solid fa-satellite-dish"></i> GPS: <span id="gps-status">--</span></p>
+        </div>
+        <div class="card">
+            <h3>Current Health</h3>
+            <p>Heart Rate: <strong id="heart-rate">--</strong> bpm</p>
+            <p>Oxygen Level: <strong id="oxygen-level">--</strong> %</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard-script.js') }}"></script>
+{% endblock %}

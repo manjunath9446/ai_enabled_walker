@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Health Analysis - Guardian Angel{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>Health & Gait Analysis</h1>
+    <p>Your real-time vitals and mobility trends.</p>
+</div>
+
+<div class="health-grid-container">
+    <!-- Full-width card for the chart -->
+    <div class="card full-width-card">
+        <h3>Heart Rate Trend (Last Minute)</h3>
+        <!-- This container MUST have the canvas inside it -->
+        <div class="chart-container">
+            <canvas id="healthChart"></canvas>
+        </div>
+    </div>
+
+    <!-- Stat cards below the chart -->
+    <div class="card">
+        <h3>Today's Vitals</h3>
+        <p><i class="fa-solid fa-heart-pulse"></i> Heart Rate: <strong id="heart-rate">--</strong> bpm</p>
+        <p><i class="fa-solid fa-lungs"></i> Oxygen Level: <strong id="oxygen-level">--</strong> %</p>
+    </div>
+    <div class="card">
+        <h3>Gait Analysis</h3>
+        <p><i class="fa-solid fa-person-walking"></i> Speed: <strong id="gait-speed">--</strong> m/s</p>
+        <p><i class="fa-solid fa-ruler-horizontal"></i> Step Length: <strong id="gait-length">--</strong> cm</p>
+        <p><i class="fa-solid fa-scale-balanced"></i> Symmetry: <strong id="gait-symmetry">--</strong></p>
+    </div>
+
+    <!-- Emergency Assistance Card -->
+    <div class="card full-width-card emergency-assistance-card">
+        <h3>Emergency Assistance</h3>
+        <p class="subtle-text">If you feel unwell, here are the nearest medical services. Tapping an option can automate a call or book a ride.</p>
+        <ul id="doctor-list" class="doctor-list">
+            <li>Loading nearby services...</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- We need to load the Chart.js library from its CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- Our page-specific script -->
+<script src="{{ url_for('static', filename='js/health-script.js') }}"></script>
+{% endblock %}

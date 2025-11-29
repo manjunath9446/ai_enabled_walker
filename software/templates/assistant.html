@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}AI Agent - Guardian Angel{% endblock %}
+
+{% block content %}
+<div class="header">
+    <h1>AI Agent</h1>
+    <p>Your personal assistant for health, navigation, and home automation.</p>
+</div>
+
+<!-- This is the main grid container for the two columns -->
+<div class="assistant-grid-container">
+    
+    <!-- ===== Left Column: The Chat Interface ===== -->
+    <div class="chat-container card">
+        <div id="chat-box" class="chat-box">
+            <div class="ai-message">
+                <i class="fa-solid fa-robot"></i>
+                <p>Hello! I am your personal agent. How can I help you today?</p>
+            </div>
+        </div>
+        <div id="suggestion-chips" class="suggestion-chips">
+    <button class="chip">What's my plan today?</button>
+    <button class="chip">Check my health</button>
+    <!-- NEW CHIP -->
+    <button class="chip">Send a WhatsApp message</button>
+</div>
+
+        <form id="chat-form" class="chat-form">
+            <div class="chat-input-wrapper">
+                <i class="fa-solid fa-comment-dots"></i>
+                <input type="text" id="chat-input" placeholder="Type a command..." autocomplete="off">
+            </div>
+            <button type="submit" id="chat-send-btn" class="chat-send-btn">Send</button>
+        </form>
+    </div>
+
+    <!-- ===== Right Column: The Smart Cards (This was missing) ===== -->
+    <div class="assistant-sidebar">
+        <div class="card">
+            <h3>Connectivity</h3>
+            <p><i id="bluetooth-icon" class="fa-brands fa-bluetooth-b"></i> Bluetooth: <span id="bluetooth-status">--</span></p>
+            <p><i id="wifi-icon" class="fa-solid fa-wifi"></i> Wi-Fi: <span id="wifi-status">--</span></p>
+            <p><i id="gps-icon" class="fa-solid fa-satellite-dish"></i> GPS: <span id="gps-status">--</span></p>
+        </div>
+        <div class="card">
+            <h3>Smart Home</h3>
+            <p class="subtle-text">Control your home appliances directly.</p>
+            <ul id="device-list" class="device-list">
+                <!-- JavaScript will populate this list -->
+                <li>Loading devices...</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/assistant-script.js') }}"></script>
+{% endblock %}
