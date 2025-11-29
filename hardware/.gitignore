@@ -1,0 +1,14 @@
+# Git Ignore File
+
+# Ignore Python virtual environment
+venv/
+
+# Ignore Python cache files
+__pycache__/
+
+# --- CRITICAL: Ignore files with secret keys ---
+firebase-credentials.json
+config.py
+
+# Ignore local generated files
+response.mp3

@@ -1,0 +1,22 @@
+# requirements.txt
+
+# --- Core & Cloud ---
+firebase-admin
+requests
+
+# --- Vision & AI ---
+opencv-python
+Pillow
+google-generativeai # For the vision script
+
+# --- Sensors (I2C, Serial, GPIO) ---
+pyserial
+pynmea2
+smbus2
+lgpio
+numpy
+
+# --- Actions & Streaming ---
+gtts
+Flask
+picamera2
